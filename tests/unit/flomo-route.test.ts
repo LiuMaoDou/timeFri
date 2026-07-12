@@ -20,7 +20,7 @@ test("POST /api/flomo forwards a valid memo to Flomo", async () => {
         method: "POST",
         body: JSON.stringify({
           eventName: "Write course notes",
-          summary: "Finished the outline.",
+          entries: ["Finished the outline.", "Marked the next step."],
           startAt: "2026-07-12T10:00:00.000Z",
           endAt: "2026-07-12T11:15:30.000Z",
         }),
@@ -52,7 +52,7 @@ test("POST /api/flomo returns NOT_CONFIGURED when webhook is missing", async () 
         method: "POST",
         body: JSON.stringify({
           eventName: "Write course notes",
-          summary: "Finished the outline.",
+          entries: ["Finished the outline."],
           startAt: "2026-07-12T10:00:00.000Z",
           endAt: "2026-07-12T11:15:30.000Z",
         }),
@@ -67,6 +67,34 @@ test("POST /api/flomo returns NOT_CONFIGURED when webhook is missing", async () 
     });
   } finally {
     if (originalUrl !== undefined) {
+      process.env.FLOMO_WEBHOOK_URL = originalUrl;
+    }
+  }
+});
+
+test("POST /api/flomo rejects an empty entries array", async () => {
+  const originalUrl = process.env.FLOMO_WEBHOOK_URL;
+  process.env.FLOMO_WEBHOOK_URL = "https://flomoapp.com/iwh/test-token";
+
+  try {
+    const response = await POST(
+      new Request("http://localhost/api/flomo", {
+        method: "POST",
+        body: JSON.stringify({
+          eventName: "Write course notes",
+          entries: [],
+          startAt: "2026-07-12T10:00:00.000Z",
+          endAt: "2026-07-12T11:15:30.000Z",
+        }),
+      }),
+    );
+
+    assert.equal(response.status, 400);
+    assert.equal((await response.json()).code, "INVALID_INPUT");
+  } finally {
+    if (originalUrl === undefined) {
+      delete process.env.FLOMO_WEBHOOK_URL;
+    } else {
       process.env.FLOMO_WEBHOOK_URL = originalUrl;
     }
   }

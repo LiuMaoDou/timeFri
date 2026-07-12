@@ -1,6 +1,6 @@
 export type FlomoMemoInput = {
   eventName: string;
-  summary: string;
+  entries: string[];
   startAt: string;
   endAt: string;
   durationSeconds: number;
@@ -54,8 +54,8 @@ export function buildFlomoMemo(input: FlomoMemoInput): string {
     `结束：${formatDateTime(input.endAt)}`,
     `持续：${formatDuration(input.durationSeconds)}`,
     "",
-    "总结：",
-    input.summary,
+    "记录：",
+    input.entries.join("\n\n"),
   ].join("\n");
 }
 

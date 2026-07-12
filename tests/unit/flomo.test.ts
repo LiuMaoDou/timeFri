@@ -9,7 +9,10 @@ import {
 
 const baseMemo: FlomoMemoInput = {
   eventName: "Write course notes",
-  summary: "Finished the outline and marked the next step.",
+  entries: [
+    "Finished the outline.",
+    "Marked the next step.",
+  ],
   startAt: new Date("2026-07-12T10:00:00.000Z").toISOString(),
   endAt: new Date("2026-07-12T11:15:30.000Z").toISOString(),
   durationSeconds: 4530,
@@ -26,10 +29,13 @@ test("buildFlomoMemo formats a time tracking memo", () => {
       "结束：2026-07-12 20:15:30",
       "持续：01:15:30",
       "",
-      "总结：",
-      "Finished the outline and marked the next step.",
+      "记录：",
+      "Finished the outline.",
+      "",
+      "Marked the next step.",
     ].join("\n"),
   );
+  assert.equal(buildFlomoMemo(baseMemo).includes("1."), false);
 });
 
 test("sendFlomoMemo posts content JSON to the webhook URL", async () => {

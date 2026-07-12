@@ -2,7 +2,7 @@ import { sendFlomoMemo, type FlomoMemoInput } from "../../../lib/flomo.ts";
 
 type FlomoRequestBody = {
   eventName?: unknown;
-  summary?: unknown;
+  entries?: unknown;
   startAt?: unknown;
   endAt?: unknown;
 };
@@ -18,7 +18,8 @@ function isValidDateString(value: string): boolean {
 function validateBody(body: FlomoRequestBody): FlomoMemoInput | null {
   if (
     typeof body.eventName !== "string" ||
-    typeof body.summary !== "string" ||
+    !Array.isArray(body.entries) ||
+    body.entries.some((entry) => typeof entry !== "string") ||
     typeof body.startAt !== "string" ||
     typeof body.endAt !== "string"
   ) {
@@ -26,13 +27,20 @@ function validateBody(body: FlomoRequestBody): FlomoMemoInput | null {
   }
 
   const eventName = body.eventName.trim();
-  const summary = body.summary.trim();
+  const entries = (body.entries as string[])
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  const totalEntryLength = entries.reduce(
+    (total, entry) => total + entry.length,
+    0,
+  );
 
   if (
     !eventName ||
     eventName.length > 100 ||
-    !summary ||
-    summary.length > 2000 ||
+    entries.length === 0 ||
+    entries.some((entry) => entry.length > 2000) ||
+    totalEntryLength > 10_000 ||
     !isValidDateString(body.startAt) ||
     !isValidDateString(body.endAt)
   ) {
@@ -47,7 +55,7 @@ function validateBody(body: FlomoRequestBody): FlomoMemoInput | null {
 
   return {
     eventName,
-    summary,
+    entries,
     startAt: body.startAt,
     endAt: body.endAt,
     durationSeconds: Math.floor((endTime - startTime) / 1000),
@@ -87,7 +95,7 @@ export async function POST(request: Request): Promise<Response> {
       {
         ok: false,
         code: "INVALID_INPUT",
-        message: "Event name, summary, start time, and end time are required.",
+        message: "Event name, entries, start time, and end time are required.",
       },
       400,
     );
