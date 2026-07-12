@@ -7,14 +7,12 @@ import {
   resolveTheme,
   type ThemePreference,
 } from "../lib/theme";
+import {
+  parseStoredSession,
+  type ActiveSession,
+} from "../lib/session";
 
 type Phase = "idle" | "start" | "running" | "end" | "saving";
-
-type ActiveSession = {
-  id: string;
-  eventName: string;
-  startAt: number;
-};
 
 const STORAGE_KEY = "timeFri.activeSession.v1";
 const THEME_STORAGE_KEY = "timeFri.theme.v1";
@@ -45,20 +43,28 @@ function loadSession(): ActiveSession | null {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
 
-    const value = JSON.parse(raw) as Partial<ActiveSession>;
-    if (
-      typeof value.id !== "string" ||
-      typeof value.eventName !== "string" ||
-      typeof value.startAt !== "number"
-    ) {
+    const session = parseStoredSession(JSON.parse(raw));
+    if (!session) {
       window.localStorage.removeItem(STORAGE_KEY);
       return null;
     }
 
-    return value as ActiveSession;
+    return session;
   } catch {
-    window.localStorage.removeItem(STORAGE_KEY);
+    try {
+      window.localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // Continue without persistence when storage is unavailable.
+    }
     return null;
+  }
+}
+
+function persistSession(session: ActiveSession) {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+  } catch {
+    // React state remains the source of truth for the current page lifetime.
   }
 }
 
@@ -197,9 +203,10 @@ export default function HomePage() {
       id: crypto.randomUUID(),
       eventName: normalized,
       startAt: Date.now(),
+      entries: [],
     };
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(nextSession));
+    persistSession(nextSession);
     setSession(nextSession);
     setPhase("running");
   }
