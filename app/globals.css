@@ -697,15 +697,46 @@ textarea:focus-visible {
 
 @media (max-width: 640px) {
   .app-shell {
-    padding: 22px 18px 18px;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding:
+      max(18px, env(safe-area-inset-top))
+      max(16px, env(safe-area-inset-right))
+      max(16px, env(safe-area-inset-bottom))
+      max(16px, env(safe-area-inset-left));
+  }
+
+  .topbar {
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .brand {
+    padding-top: 7px;
+  }
+
+  .topbar-actions {
+    min-width: 0;
+    align-items: flex-end;
+    flex-direction: column-reverse;
+    gap: 6px;
+  }
+
+  .status-dot {
+    min-height: 28px;
+    padding: 0 10px;
+    font-size: 12px;
   }
 
   .clock-stage {
-    min-height: 570px;
+    min-height: min(570px, calc(100dvh - 130px));
+    padding: 32px 0;
   }
 
   .clock {
-    font-size: clamp(55px, 19vw, 90px);
+    max-width: 100%;
+    font-size: clamp(48px, 18vw, 82px);
   }
 
   .session-area {
@@ -715,33 +746,49 @@ textarea:focus-visible {
   }
 
   .controls {
+    grid-template-columns: 1fr;
     gap: 10px;
   }
 
   .button {
-    min-height: 50px;
+    width: 100%;
+    min-height: 54px;
     padding: 0 14px;
     border-radius: 14px;
   }
 
   .footer-line {
+    align-items: flex-start;
     justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+    text-align: left;
   }
 
   .footer-line span:first-child {
-    display: none;
+    display: inline;
   }
 
   .dialog-backdrop {
-    padding: 14px;
+    padding: 0;
     align-items: end;
   }
 
   .dialog-card,
   .dialog-card-wide {
     width: 100%;
-    padding: 32px 22px 24px;
-    border-radius: 24px;
+    max-height: min(88dvh, 760px);
+    overflow-y: auto;
+    padding:
+      34px
+      max(20px, env(safe-area-inset-right))
+      max(24px, calc(env(safe-area-inset-bottom) + 16px))
+      max(20px, env(safe-area-inset-left));
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 24px 24px 0 0;
+    animation-name: sheet-in;
   }
 
   .dialog-actions {
@@ -756,6 +803,36 @@ textarea:focus-visible {
     align-items: flex-start;
     flex-direction: column;
     gap: 8px;
+  }
+}
+
+@media (max-width: 360px) {
+  .theme-switcher {
+    grid-template-columns: repeat(3, 30px);
+  }
+
+  .theme-option {
+    width: 30px;
+    height: 30px;
+  }
+
+  .clock {
+    font-size: clamp(46px, 17vw, 62px);
+  }
+
+  .date-line {
+    font-size: 12px;
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
