@@ -22,6 +22,11 @@
   --placeholder: #a4a7b4;
   --backdrop: rgba(19, 20, 30, 0.28);
   --grid-line: rgba(95, 99, 232, 0.028);
+  --running-background: rgba(238, 239, 255, 0.8);
+  --running-border: rgba(95, 99, 232, 0.2);
+  --running-text: #4d51cd;
+  --running-dot: #5f63e8;
+  --running-halo: rgba(95, 99, 232, 0.12);
   color-scheme: light;
 }
 
@@ -47,6 +52,11 @@ html[data-theme="dark"] {
   --placeholder: #747887;
   --backdrop: rgba(3, 4, 7, 0.62);
   --grid-line: rgba(146, 149, 255, 0.05);
+  --running-background: rgba(82, 86, 180, 0.2);
+  --running-border: rgba(146, 149, 255, 0.34);
+  --running-text: #d4d5ff;
+  --running-dot: #aeb0ff;
+  --running-halo: rgba(82, 86, 180, 0.38);
   color-scheme: dark;
 }
 
@@ -219,14 +229,14 @@ button {
 }
 
 .status-dot.is-running {
-  border-color: rgba(95, 99, 232, 0.2);
-  color: var(--accent-dark);
-  background: rgba(238, 239, 255, 0.8);
+  border-color: var(--running-border);
+  color: var(--running-text);
+  background: var(--running-background);
 }
 
 .status-dot.is-running > span {
-  background: var(--accent);
-  box-shadow: 0 0 0 5px rgba(95, 99, 232, 0.12);
+  background: var(--running-dot);
+  box-shadow: 0 0 0 5px var(--running-halo);
   animation: pulse 1.8s ease-in-out infinite;
 }
 
@@ -311,6 +321,13 @@ button {
   font-weight: 600;
   letter-spacing: 0.08em;
   font-variant-numeric: tabular-nums;
+}
+
+.entry-count {
+  margin: 9px 0 0;
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .idle-copy {

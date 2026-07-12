@@ -8,6 +8,7 @@ import {
   type ThemePreference,
 } from "../lib/theme";
 import {
+  appendSessionEntry,
   parseStoredSession,
   type ActiveSession,
 } from "../lib/session";
@@ -98,6 +99,7 @@ export default function HomePage() {
   const [eventError, setEventError] = useState("");
   const [summaryError, setSummaryError] = useState("");
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
   const [themePreference, setThemePreference] =
     useState<ThemePreference>("system");
 
@@ -217,19 +219,53 @@ export default function HomePage() {
     setPhase("end");
   }
 
-  async function confirmEnd(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function displayToast(message: string) {
+    setToastMessage(message);
+    setShowToast(true);
+    window.setTimeout(() => setShowToast(false), 1800);
+  }
+
+  function saveProgressEntry() {
     const normalized = summary.trim();
     const activeSession = session;
 
     if (!normalized) {
-      setSummaryError("请输入本次总结");
+      setSummaryError("请输入本次记录内容");
       return;
     }
 
     if (!activeSession) {
       setSummaryError("没有正在记录的事件");
       setPhase("idle");
+      return;
+    }
+
+    const nextSession = appendSessionEntry(activeSession, normalized);
+    persistSession(nextSession);
+    setSession(nextSession);
+    setSummary("");
+    setSummaryError("");
+    setPhase("running");
+    displayToast("已保存本次记录");
+  }
+
+  async function confirmEnd(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const normalized = summary.trim();
+    const activeSession = session;
+
+    if (!activeSession) {
+      setSummaryError("没有正在记录的事件");
+      setPhase("idle");
+      return;
+    }
+
+    const entries = normalized
+      ? appendSessionEntry(activeSession, normalized).entries
+      : activeSession.entries;
+
+    if (entries.length === 0) {
+      setSummaryError("请至少保存一条记录内容");
       return;
     }
 
@@ -244,7 +280,7 @@ export default function HomePage() {
         },
         body: JSON.stringify({
           eventName: activeSession.eventName,
-          summary: normalized,
+          entries,
           startAt: new Date(activeSession.startAt).toISOString(),
           endAt: endAt.toISOString(),
         }),
@@ -264,13 +300,13 @@ export default function HomePage() {
     setEventName("");
     setSummary("");
     setPhase("idle");
-    setShowToast(true);
-    window.setTimeout(() => setShowToast(false), 1800);
+    displayToast("已写入 Flomo");
   }
 
   function handleSummaryShortcut(event: KeyboardEvent<HTMLTextAreaElement>) {
     if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
-      event.currentTarget.form?.requestSubmit();
+      event.preventDefault();
+      saveProgressEntry();
     }
   }
 
@@ -329,6 +365,9 @@ export default function HomePage() {
               <p className="elapsed" aria-label={`已经持续 ${elapsed}`}>
                 {elapsed}
               </p>
+              {session.entries.length > 0 && (
+                <p className="entry-count">已记录 {session.entries.length} 条</p>
+              )}
             </>
           ) : (
             <>
@@ -355,7 +394,7 @@ export default function HomePage() {
             disabled={!isRunning}
           >
             <span className="button-icon stop-icon" aria-hidden="true" />
-            结束
+            记录
           </button>
         </div>
       </section>
@@ -440,8 +479,8 @@ export default function HomePage() {
                 ×
               </button>
             )}
-            <p className="dialog-kicker">完成本次记录</p>
-            <h2 id="end-dialog-title">为这段时间做个总结</h2>
+            <p className="dialog-kicker">记录当前进展</p>
+            <h2 id="end-dialog-title">留下这段时间的内容</h2>
 
             <div className="session-summary">
               <span>{session.eventName}</span>
@@ -449,7 +488,7 @@ export default function HomePage() {
             </div>
 
             <form onSubmit={confirmEnd} noValidate>
-              <label htmlFor="summary">总结</label>
+              <label htmlFor="summary">记录内容</label>
               <textarea
                 id="summary"
                 value={summary}
@@ -467,7 +506,7 @@ export default function HomePage() {
                 aria-describedby={summaryError ? "summary-error" : "summary-hint"}
               />
               <div className="field-meta">
-                <span id="summary-hint">⌘ / Ctrl + Enter 提交</span>
+                <span id="summary-hint">⌘ / Ctrl + Enter 保存记录</span>
                 <span>{summary.length}/2000</span>
               </div>
               {summaryError && (
@@ -479,7 +518,7 @@ export default function HomePage() {
                 <button
                   className="button button-ghost"
                   type="button"
-                  onClick={() => setPhase("running")}
+                  onClick={saveProgressEntry}
                   disabled={phase === "saving"}
                 >
                   继续计时
@@ -495,7 +534,7 @@ export default function HomePage() {
                       正在写入
                     </>
                   ) : (
-                    "确认并写入 Flomo"
+                    "结束"
                   )}
                 </button>
               </div>
@@ -506,7 +545,7 @@ export default function HomePage() {
 
       <div className={`toast ${showToast ? "is-visible" : ""}`} role="status">
         <span aria-hidden="true">✓</span>
-        已写入 Flomo
+        {toastMessage}
       </div>
     </main>
   );
