@@ -2,6 +2,12 @@
 
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from "react";
 
+import {
+  parseThemePreference,
+  resolveTheme,
+  type ThemePreference,
+} from "../lib/theme";
+
 type Phase = "idle" | "start" | "running" | "end" | "saving";
 
 type ActiveSession = {
@@ -11,6 +17,17 @@ type ActiveSession = {
 };
 
 const STORAGE_KEY = "timeFri.activeSession.v1";
+const THEME_STORAGE_KEY = "timeFri.theme.v1";
+
+const themeOptions: Array<{
+  value: ThemePreference;
+  label: string;
+  icon: string;
+}> = [
+  { value: "light", label: "浅色主题", icon: "☀" },
+  { value: "dark", label: "深色主题", icon: "☾" },
+  { value: "system", label: "跟随系统主题", icon: "▣" },
+];
 
 function formatElapsed(milliseconds: number): string {
   const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
@@ -45,6 +62,27 @@ function loadSession(): ActiveSession | null {
   }
 }
 
+function applyThemePreference(
+  preference: ThemePreference,
+  persist = false,
+) {
+  const root = document.documentElement;
+  const systemPrefersDark = window.matchMedia(
+    "(prefers-color-scheme: dark)",
+  ).matches;
+
+  root.dataset.themePreference = preference;
+  root.dataset.theme = resolveTheme(preference, systemPrefersDark);
+
+  if (persist) {
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, preference);
+    } catch {
+      // The selected theme still applies when storage is unavailable.
+    }
+  }
+}
+
 export default function HomePage() {
   const [now, setNow] = useState<Date | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
@@ -54,6 +92,8 @@ export default function HomePage() {
   const [eventError, setEventError] = useState("");
   const [summaryError, setSummaryError] = useState("");
   const [showToast, setShowToast] = useState(false);
+  const [themePreference, setThemePreference] =
+    useState<ThemePreference>("system");
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -70,6 +110,30 @@ export default function HomePage() {
     return () => {
       window.cancelAnimationFrame(frame);
       window.clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const initialPreference = parseThemePreference(
+      root.dataset.themePreference,
+    );
+    const frame = window.requestAnimationFrame(() => {
+      setThemePreference(initialPreference);
+      applyThemePreference(initialPreference);
+    });
+
+    function handleSystemThemeChange() {
+      if (root.dataset.themePreference === "system") {
+        applyThemePreference("system");
+      }
+    }
+
+    mediaQuery.addEventListener("change", handleSystemThemeChange);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      mediaQuery.removeEventListener("change", handleSystemThemeChange);
     };
   }, []);
 
@@ -203,6 +267,11 @@ export default function HomePage() {
     }
   }
 
+  function selectTheme(preference: ThemePreference) {
+    applyThemePreference(preference, true);
+    setThemePreference(preference);
+  }
+
   const isRunning = Boolean(session);
 
   return (
@@ -214,9 +283,26 @@ export default function HomePage() {
         <a className="brand" href="#" aria-label="timeFri 首页">
           time<span>Fri</span>
         </a>
-        <div className={`status-dot ${isRunning ? "is-running" : ""}`}>
-          <span aria-hidden="true" />
-          {isRunning ? "记录中" : "空闲"}
+        <div className="topbar-actions">
+          <div className="theme-switcher" aria-label="主题设置" role="group">
+            {themeOptions.map((option) => (
+              <button
+                className="theme-option"
+                type="button"
+                key={option.value}
+                title={option.label}
+                aria-label={option.label}
+                aria-pressed={themePreference === option.value}
+                onClick={() => selectTheme(option.value)}
+              >
+                <span aria-hidden="true">{option.icon}</span>
+              </button>
+            ))}
+          </div>
+          <div className={`status-dot ${isRunning ? "is-running" : ""}`}>
+            <span aria-hidden="true" />
+            {isRunning ? "记录中" : "空闲"}
+          </div>
         </div>
       </header>
 
