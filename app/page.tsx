@@ -487,6 +487,27 @@ export default function HomePage() {
               <strong>{elapsed}</strong>
             </div>
 
+            {session.entries.length > 0 && (
+              <section
+                className="entry-history"
+                aria-labelledby="entry-history-title"
+              >
+                <p className="entry-history-title" id="entry-history-title">
+                  已保存记录 · {session.entries.length} 条
+                </p>
+                <div className="entry-history-list">
+                  {session.entries.map((entry, index) => (
+                    <p
+                      className="entry-history-item"
+                      key={`${index}-${entry}`}
+                    >
+                      {entry}
+                    </p>
+                  ))}
+                </div>
+              </section>
+            )}
+
             <form onSubmit={confirmEnd} noValidate>
               <label htmlFor="summary">记录内容</label>
               <textarea

@@ -628,6 +628,39 @@ textarea:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+.entry-history {
+  margin-top: 22px;
+}
+
+.entry-history-title {
+  margin: 0 0 9px;
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.entry-history-list {
+  display: grid;
+  max-height: 180px;
+  overflow-y: auto;
+  gap: 8px;
+  padding-right: 4px;
+  overscroll-behavior: contain;
+}
+
+.entry-history-item {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+  background: var(--surface-subtle);
+  font-size: 13px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
 .spinner {
   width: 16px;
   height: 16px;
@@ -820,6 +853,18 @@ textarea:focus-visible {
     align-items: flex-start;
     flex-direction: column;
     gap: 8px;
+  }
+
+  .entry-history {
+    margin-top: 18px;
+  }
+
+  .entry-history-list {
+    max-height: 160px;
+  }
+
+  .entry-history-item {
+    padding: 11px 12px;
   }
 }
 
