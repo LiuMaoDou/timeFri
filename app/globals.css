@@ -1,4 +1,18 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+@font-face {
+  font-family: "Anthropic Sans";
+  src: url("/AnthropicSans-Display-Regular-Static.otf") format("opentype");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: "FZ LanTingYuan";
+  src: url("/方正兰亭圆_GBK_准.ttf") format("truetype");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400;
+}
 
 :root {
   --background: #f7f8fb;
@@ -75,7 +89,7 @@ body {
   min-height: 100vh;
   color: var(--text);
   background: var(--background);
-  font-family: "DM Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: "Anthropic Sans", "FZ LanTingYuan", "Yuanti SC", "Microsoft YaHei", sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -261,7 +275,7 @@ button {
 
 .clock {
   margin: 0;
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
   font-size: clamp(58px, 12vw, 132px);
   font-weight: 500;
   line-height: 0.92;
@@ -316,7 +330,7 @@ button {
 .elapsed {
   margin: 4px 0 0;
   color: var(--accent);
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.08em;
@@ -623,7 +637,7 @@ textarea:focus-visible {
 .session-summary strong {
   flex: 0 0 auto;
   color: var(--accent-dark);
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
   font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
