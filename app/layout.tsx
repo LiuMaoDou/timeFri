@@ -24,6 +24,9 @@ const themeBootstrapScript = `
 export const metadata: Metadata = {
   title: "timeFri",
   description: "A quiet timer for focused work.",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
