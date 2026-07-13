@@ -2,12 +2,9 @@ import Database from "better-sqlite3";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 
-import type { ActiveSession } from "./session.ts";
+import type { ActiveSession, StoredSession } from "./session.ts";
 
-export type StoredSession = ActiveSession & {
-  version: number;
-  updatedAt: number;
-};
+export type { StoredSession } from "./session.ts";
 
 export type CreateSessionInput = Pick<
   ActiveSession,

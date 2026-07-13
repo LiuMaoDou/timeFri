@@ -1,6 +1,13 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from "react";
+import {
+  FormEvent,
+  KeyboardEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import {
   parseThemePreference,
@@ -8,9 +15,9 @@ import {
   type ThemePreference,
 } from "../lib/theme";
 import {
-  appendSessionEntry,
   parseStoredSession,
-  type ActiveSession,
+  shouldReplaceSession,
+  type StoredSession,
 } from "../lib/session";
 
 type Phase = "idle" | "start" | "running" | "end" | "saving";
@@ -39,36 +46,6 @@ function formatElapsed(milliseconds: number): string {
     .join(":");
 }
 
-function loadSession(): ActiveSession | null {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-
-    const session = parseStoredSession(JSON.parse(raw));
-    if (!session) {
-      window.localStorage.removeItem(STORAGE_KEY);
-      return null;
-    }
-
-    return session;
-  } catch {
-    try {
-      window.localStorage.removeItem(STORAGE_KEY);
-    } catch {
-      // Continue without persistence when storage is unavailable.
-    }
-    return null;
-  }
-}
-
-function persistSession(session: ActiveSession) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-  } catch {
-    // React state remains the source of truth for the current page lifetime.
-  }
-}
-
 function applyThemePreference(
   preference: ThemePreference,
   persist = false,
@@ -93,30 +70,76 @@ function applyThemePreference(
 export default function HomePage() {
   const [now, setNow] = useState<Date | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
-  const [session, setSession] = useState<ActiveSession | null>(null);
+  const [session, setSession] = useState<StoredSession | null>(null);
   const [eventName, setEventName] = useState("");
   const [summary, setSummary] = useState("");
   const [eventError, setEventError] = useState("");
   const [summaryError, setSummaryError] = useState("");
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [isMutating, setIsMutating] = useState(false);
   const [themePreference, setThemePreference] =
     useState<ThemePreference>("system");
+  const sessionRef = useRef<StoredSession | null>(null);
+  const mutationInFlightRef = useRef(false);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
       setNow(new Date());
-      const restored = loadSession();
-
-      if (restored) {
-        setSession(restored);
-        setPhase("running");
-      }
     });
     const timer = window.setInterval(() => setNow(new Date()), 1000);
 
     return () => {
       window.cancelAnimationFrame(frame);
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function synchronizeSession() {
+      if (mutationInFlightRef.current) return;
+
+      try {
+        const response = await fetch("/api/session", { cache: "no-store" });
+        if (!response.ok) return;
+
+        const body = (await response.json()) as { session?: unknown };
+        const incoming =
+          body.session === null ? null : parseStoredSession(body.session);
+        if (body.session !== null && !incoming) return;
+        if (!isActive || mutationInFlightRef.current) return;
+
+        try {
+          window.localStorage.removeItem(STORAGE_KEY);
+        } catch {
+          // Server state remains authoritative when browser storage is unavailable.
+        }
+
+        const current = sessionRef.current;
+        if (!shouldReplaceSession(current, incoming)) return;
+
+        sessionRef.current = incoming;
+        setSession(incoming);
+        setPhase((currentPhase) => {
+          if (incoming) {
+            return currentPhase === "end" && current?.id === incoming.id
+              ? "end"
+              : "running";
+          }
+          return currentPhase === "start" ? "start" : "idle";
+        });
+      } catch {
+        // Keep the most recent server state and retry on the next poll.
+      }
+    }
+
+    void synchronizeSession();
+    const timer = window.setInterval(synchronizeSession, 3000);
+
+    return () => {
+      isActive = false;
       window.clearInterval(timer);
     };
   }, []);
@@ -192,7 +215,7 @@ export default function HomePage() {
     setPhase("start");
   }
 
-  function confirmStart(event: FormEvent<HTMLFormElement>) {
+  async function confirmStart(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const normalized = eventName.trim();
 
@@ -201,16 +224,44 @@ export default function HomePage() {
       return;
     }
 
-    const nextSession: ActiveSession = {
+    const nextSession = {
       id: crypto.randomUUID(),
       eventName: normalized,
       startAt: Date.now(),
-      entries: [],
     };
 
-    persistSession(nextSession);
-    setSession(nextSession);
-    setPhase("running");
+    mutationInFlightRef.current = true;
+    setIsMutating(true);
+    try {
+      const response = await fetch("/api/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(nextSession),
+      });
+      const body = (await response.json()) as { session?: unknown };
+      const storedSession = parseStoredSession(body.session);
+
+      if (!response.ok || !storedSession) {
+        if (storedSession) {
+          sessionRef.current = storedSession;
+          setSession(storedSession);
+          setPhase("running");
+          displayToast("已同步正在记录的事件");
+          return;
+        }
+        setEventError("启动失败，请检查服务器后重试");
+        return;
+      }
+
+      sessionRef.current = storedSession;
+      setSession(storedSession);
+      setPhase("running");
+    } catch {
+      setEventError("启动失败，请检查网络后重试");
+    } finally {
+      mutationInFlightRef.current = false;
+      setIsMutating(false);
+    }
   }
 
   function openEndDialog() {
@@ -225,7 +276,7 @@ export default function HomePage() {
     window.setTimeout(() => setShowToast(false), 1800);
   }
 
-  function saveProgressEntry() {
+  async function saveProgressEntry() {
     const normalized = summary.trim();
     const activeSession = session;
 
@@ -240,13 +291,49 @@ export default function HomePage() {
       return;
     }
 
-    const nextSession = appendSessionEntry(activeSession, normalized);
-    persistSession(nextSession);
-    setSession(nextSession);
-    setSummary("");
-    setSummaryError("");
-    setPhase("running");
-    displayToast("已保存本次记录");
+    mutationInFlightRef.current = true;
+    setIsMutating(true);
+    try {
+      const response = await fetch("/api/session", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: activeSession.id,
+          content: normalized,
+        }),
+      });
+      const body = (await response.json()) as { session?: unknown };
+      const storedSession =
+        body.session === null ? null : parseStoredSession(body.session);
+
+      if (!response.ok || !storedSession) {
+        if (body.session === null) {
+          sessionRef.current = null;
+          setSession(null);
+          setPhase("idle");
+          setSummaryError("当前事件已在其他浏览器结束");
+          return;
+        }
+        if (storedSession) {
+          sessionRef.current = storedSession;
+          setSession(storedSession);
+        }
+        setSummaryError("保存失败，请稍后重试");
+        return;
+      }
+
+      sessionRef.current = storedSession;
+      setSession(storedSession);
+      setSummary("");
+      setSummaryError("");
+      setPhase("running");
+      displayToast("已保存本次记录");
+    } catch {
+      setSummaryError("保存失败，请检查网络后重试");
+    } finally {
+      mutationInFlightRef.current = false;
+      setIsMutating(false);
+    }
   }
 
   async function confirmEnd(event: FormEvent<HTMLFormElement>) {
@@ -260,42 +347,60 @@ export default function HomePage() {
       return;
     }
 
-    const entries = normalized
-      ? appendSessionEntry(activeSession, normalized).entries
-      : activeSession.entries;
-
-    if (entries.length === 0) {
+    if (!normalized && activeSession.entries.length === 0) {
       setSummaryError("请至少保存一条记录内容");
       return;
     }
 
     setPhase("saving");
-    const endAt = new Date();
+    mutationInFlightRef.current = true;
+    setIsMutating(true);
 
     try {
-      const response = await fetch("/api/flomo", {
+      const response = await fetch("/api/session/finish", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          eventName: activeSession.eventName,
-          entries,
-          startAt: new Date(activeSession.startAt).toISOString(),
-          endAt: endAt.toISOString(),
+          sessionId: activeSession.id,
+          finalEntry: normalized || undefined,
         }),
       });
 
       if (!response.ok) {
-        throw new Error("Flomo write failed");
+        const body = (await response.json()) as { session?: unknown };
+        const storedSession =
+          body.session === null ? null : parseStoredSession(body.session);
+
+        if (storedSession) {
+          sessionRef.current = storedSession;
+          setSession(storedSession);
+          if (normalized && storedSession.entries.includes(normalized)) {
+            setSummary("");
+          }
+        } else if (body.session === null) {
+          sessionRef.current = null;
+          setSession(null);
+          setPhase("idle");
+          setSummaryError("当前事件已在其他浏览器结束");
+          return;
+        }
+
+        setSummaryError("写入 Flomo 失败，请检查 Webhook 配置或稍后重试");
+        setPhase("end");
+        return;
       }
     } catch {
       setSummaryError("写入 Flomo 失败，请检查 Webhook 配置或稍后重试");
       setPhase("end");
       return;
+    } finally {
+      mutationInFlightRef.current = false;
+      setIsMutating(false);
     }
 
-    window.localStorage.removeItem(STORAGE_KEY);
+    sessionRef.current = null;
     setSession(null);
     setEventName("");
     setSummary("");
@@ -382,7 +487,7 @@ export default function HomePage() {
             className="button button-primary"
             type="button"
             onClick={openStartDialog}
-            disabled={isRunning}
+            disabled={isRunning || isMutating}
           >
             <span className="button-icon" aria-hidden="true">▶</span>
             启动
@@ -452,7 +557,11 @@ export default function HomePage() {
                 >
                   取消
                 </button>
-                <button className="button button-primary" type="submit">
+                <button
+                  className="button button-primary"
+                  type="submit"
+                  disabled={isMutating}
+                >
                   确认启动
                 </button>
               </div>
@@ -540,14 +649,14 @@ export default function HomePage() {
                   className="button button-ghost"
                   type="button"
                   onClick={saveProgressEntry}
-                  disabled={phase === "saving"}
+                  disabled={phase === "saving" || isMutating}
                 >
                   继续计时
                 </button>
                 <button
                   className="button button-primary"
                   type="submit"
-                  disabled={phase === "saving"}
+                  disabled={phase === "saving" || isMutating}
                 >
                   {phase === "saving" ? (
                     <>
