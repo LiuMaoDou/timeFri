@@ -55,7 +55,7 @@ export function buildFlomoMemo(input: FlomoMemoInput): string {
     `持续：${formatDuration(input.durationSeconds)}`,
     "",
     "记录：",
-    input.entries.join("\n"),
+    input.entries.map((entry) => `- ${entry}`).join("\n"),
   ].join("\n");
 }
 

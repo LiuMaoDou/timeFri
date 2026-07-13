@@ -30,9 +30,17 @@ test("buildFlomoMemo formats a time tracking memo", () => {
       "持续：01:15:30",
       "",
       "记录：",
-      "Finished the outline.",
-      "Marked the next step.",
+      "- Finished the outline.",
+      "- Marked the next step.",
     ].join("\n"),
+  );
+  assert.equal(
+    buildFlomoMemo(baseMemo).includes("\n- Finished the outline."),
+    true,
+  );
+  assert.equal(
+    buildFlomoMemo(baseMemo).includes("\n- Marked the next step."),
+    true,
   );
   assert.equal(
     buildFlomoMemo(baseMemo).includes(
