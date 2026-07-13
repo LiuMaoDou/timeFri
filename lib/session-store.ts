@@ -187,9 +187,9 @@ const globalStore = globalThis as typeof globalThis & {
 
 export function getSessionStore(): SessionStore {
   if (!globalStore.timeFriSessionStore) {
-    const databasePath = path.resolve(
-      process.env.TIMEFRI_DATABASE_PATH ?? "data/timefri.sqlite",
-    );
+    const databasePath =
+      process.env.TIMEFRI_DATABASE_PATH ??
+      path.join(process.cwd(), "data", "timefri.sqlite");
     globalStore.timeFriSessionStore = createSessionStore(databasePath);
   }
 
