@@ -7,6 +7,14 @@
 }
 
 @font-face {
+  font-family: "Anthropic Sans";
+  src: url("/AnthropicSans-Display-Bold-Static.otf") format("opentype");
+  font-display: swap;
+  font-style: normal;
+  font-weight: 700;
+}
+
+@font-face {
   font-family: "FZ LanTingYuan";
   src: url("/方正兰亭圆_GBK_准.ttf") format("truetype");
   font-display: swap;
