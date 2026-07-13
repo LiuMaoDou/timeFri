@@ -12,11 +12,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "better-sqlite3": "^12.11.1",
     "next": "^16.2.10",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^22.15.30",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
