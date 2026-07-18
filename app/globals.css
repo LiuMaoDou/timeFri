@@ -292,6 +292,15 @@ button {
   text-shadow: 0 12px 40px rgba(32, 35, 64, 0.08);
 }
 
+.running-session-hero {
+  display: flex;
+  width: min(780px, 100%);
+  min-height: 170px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
 .session-area {
   display: flex;
   width: min(560px, 100%);
@@ -335,6 +344,13 @@ button {
   -webkit-line-clamp: 2;
 }
 
+.running-session-name {
+  max-width: 100%;
+  margin: 14px 0 18px;
+  font-size: clamp(30px, 5vw, 56px);
+  line-height: 1.12;
+}
+
 .elapsed {
   margin: 4px 0 0;
   color: var(--accent);
@@ -343,6 +359,33 @@ button {
   font-weight: 600;
   letter-spacing: 0.08em;
   font-variant-numeric: tabular-nums;
+}
+
+.running-elapsed {
+  margin: 0;
+  font-size: clamp(52px, 10vw, 112px);
+  font-weight: 700;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+  text-shadow: 0 14px 42px rgba(95, 99, 232, 0.24);
+}
+
+.session-date-line {
+  margin: 0 0 8px;
+}
+
+.session-area.has-session .session-label {
+  margin-bottom: 16px;
+}
+
+.session-clock {
+  color: var(--text);
+  font-size: clamp(38px, 6vw, 66px);
+  line-height: 1;
+}
+
+.session-area.has-session + .controls {
+  margin-top: clamp(44px, 6vw, 64px);
 }
 
 .entry-count {
@@ -809,6 +852,19 @@ textarea:focus-visible {
   .clock {
     max-width: 100%;
     font-size: clamp(48px, 18vw, 82px);
+  }
+
+  .running-session-name {
+    margin-bottom: 18px;
+    font-size: clamp(28px, 8vw, 42px);
+  }
+
+  .running-elapsed {
+    font-size: clamp(50px, 15vw, 76px);
+  }
+
+  .session-area.has-session + .controls {
+    margin-top: 48px;
   }
 
   .session-area {

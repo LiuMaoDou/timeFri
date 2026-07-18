@@ -455,20 +455,32 @@ export default function HomePage() {
       </header>
 
       <section className="clock-stage" aria-label="时间记录器">
-        <p className="date-line">{dateText}</p>
-        <h1 className="clock" aria-label={`当前时间 ${clockText}`}>
-          {clockText}
-        </h1>
+        {session ? (
+          <div className="running-session-hero">
+            <p className="session-label">当前任务</p>
+            <h1 className="session-name running-session-name" title={session.eventName}>
+              {session.eventName}
+            </h1>
+            <p className="elapsed running-elapsed" aria-label={`已经持续 ${elapsed}`}>
+              {elapsed}
+            </p>
+          </div>
+        ) : (
+          <>
+            <p className="date-line">{dateText}</p>
+            <h1 className="clock" aria-label={`当前时间 ${clockText}`}>
+              {clockText}
+            </h1>
+          </>
+        )}
 
         <div className={`session-area ${isRunning ? "has-session" : ""}`}>
           {session ? (
             <>
-              <p className="session-label">当前事件</p>
-              <p className="session-name" title={session.eventName}>
-                {session.eventName}
-              </p>
-              <p className="elapsed" aria-label={`已经持续 ${elapsed}`}>
-                {elapsed}
+              <p className="date-line session-date-line">{dateText}</p>
+              <p className="session-label">当前时间</p>
+              <p className="clock session-clock" aria-label={`当前时间 ${clockText}`}>
+                {clockText}
               </p>
               {session.entries.length > 0 && (
                 <p className="entry-count">已记录 {session.entries.length} 条</p>
