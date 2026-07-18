@@ -16,6 +16,10 @@ type AppendEntryBody = {
   content?: unknown;
 };
 
+type EndSessionBody = {
+  sessionId?: unknown;
+};
+
 function jsonResponse(body: unknown, status: number): Response {
   return Response.json(body, { status });
 }
@@ -102,6 +106,32 @@ export function createSessionHandlers(
         throw error;
       }
     },
+
+    async DELETE(request: Request): Promise<Response> {
+      const body = await readJson<EndSessionBody>(request);
+      if (!body) {
+        return jsonResponse({ ok: false, code: "INVALID_JSON" }, 400);
+      }
+
+      const sessionId =
+        typeof body.sessionId === "string" ? body.sessionId.trim() : "";
+      if (!sessionId) {
+        return jsonResponse({ ok: false, code: "INVALID_INPUT" }, 400);
+      }
+
+      try {
+        store.delete(sessionId);
+        return jsonResponse({ ok: true }, 200);
+      } catch (error) {
+        if (error instanceof SessionChangedError) {
+          return jsonResponse(
+            { ok: false, code: "SESSION_CHANGED", session: store.get() },
+            409,
+          );
+        }
+        throw error;
+      }
+    },
   };
 }
 
@@ -110,3 +140,4 @@ const handlers = createSessionHandlers(getSessionStore());
 export const GET = handlers.GET;
 export const POST = handlers.POST;
 export const PATCH = handlers.PATCH;
+export const DELETE = handlers.DELETE;

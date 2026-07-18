@@ -112,3 +112,50 @@ test("PATCH /api/session rejects stale sessions and oversized entries", async ()
   assert.equal(oversizedResponse.status, 400);
   store.close();
 });
+
+test("DELETE /api/session ends the matching session without requiring Flomo", async () => {
+  const store = createSessionStore(":memory:");
+  const handlers = createSessionHandlers(store);
+  store.create({ id: "session-1", eventName: "Write", startAt: 1000 });
+  store.append("session-1", "Saved note", 2000);
+
+  const response = await handlers.DELETE(
+    new Request("http://localhost/api/session", {
+      method: "DELETE",
+      body: JSON.stringify({ sessionId: "session-1" }),
+    }),
+  );
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { ok: true });
+  assert.equal(store.get(), null);
+  store.close();
+});
+
+test("DELETE /api/session rejects invalid and stale session ids", async () => {
+  const store = createSessionStore(":memory:");
+  const handlers = createSessionHandlers(store);
+  store.create({ id: "session-1", eventName: "Write", startAt: 1000 });
+
+  const invalidResponse = await handlers.DELETE(
+    new Request("http://localhost/api/session", {
+      method: "DELETE",
+      body: JSON.stringify({ sessionId: "" }),
+    }),
+  );
+  assert.equal(invalidResponse.status, 400);
+  assert.equal((await invalidResponse.json()).code, "INVALID_INPUT");
+
+  const staleResponse = await handlers.DELETE(
+    new Request("http://localhost/api/session", {
+      method: "DELETE",
+      body: JSON.stringify({ sessionId: "session-old" }),
+    }),
+  );
+  const staleBody = await staleResponse.json();
+  assert.equal(staleResponse.status, 409);
+  assert.equal(staleBody.code, "SESSION_CHANGED");
+  assert.equal(staleBody.session.id, "session-1");
+  assert.notEqual(store.get(), null);
+  store.close();
+});

@@ -20,7 +20,13 @@ import {
   type StoredSession,
 } from "../lib/session";
 
-type Phase = "idle" | "start" | "running" | "end" | "saving";
+type Phase =
+  | "idle"
+  | "start"
+  | "running"
+  | "end"
+  | "ending"
+  | "saving";
 
 const STORAGE_KEY = "timeFri.activeSession.v1";
 const THEME_STORAGE_KEY = "timeFri.theme.v1";
@@ -276,6 +282,16 @@ export default function HomePage() {
     window.setTimeout(() => setShowToast(false), 1800);
   }
 
+  function clearFinishedSession(message: string) {
+    sessionRef.current = null;
+    setSession(null);
+    setEventName("");
+    setSummary("");
+    setSummaryError("");
+    setPhase("idle");
+    displayToast(message);
+  }
+
   async function saveProgressEntry() {
     const normalized = summary.trim();
     const activeSession = session;
@@ -336,7 +352,60 @@ export default function HomePage() {
     }
   }
 
-  async function confirmEnd(event: FormEvent<HTMLFormElement>) {
+  async function endWithoutFlomo() {
+    const activeSession = session;
+
+    if (!activeSession) {
+      setSummaryError("没有正在记录的事件");
+      setPhase("idle");
+      return;
+    }
+
+    setPhase("ending");
+    mutationInFlightRef.current = true;
+    setIsMutating(true);
+
+    try {
+      const response = await fetch("/api/session", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: activeSession.id }),
+      });
+
+      if (!response.ok) {
+        const body = (await response.json()) as { session?: unknown };
+        const storedSession =
+          body.session === null ? null : parseStoredSession(body.session);
+
+        if (storedSession) {
+          sessionRef.current = storedSession;
+          setSession(storedSession);
+          setSummaryError("结束失败，请稍后重试");
+          setPhase("end");
+          return;
+        }
+
+        if (body.session === null) {
+          clearFinishedSession("计时已结束");
+          return;
+        }
+
+        setSummaryError("结束失败，请稍后重试");
+        setPhase("end");
+        return;
+      }
+
+      clearFinishedSession("计时已结束");
+    } catch {
+      setSummaryError("结束失败，请检查网络后重试");
+      setPhase("end");
+    } finally {
+      mutationInFlightRef.current = false;
+      setIsMutating(false);
+    }
+  }
+
+  async function finishWithFlomo(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const normalized = summary.trim();
     const activeSession = session;
@@ -400,12 +469,7 @@ export default function HomePage() {
       setIsMutating(false);
     }
 
-    sessionRef.current = null;
-    setSession(null);
-    setEventName("");
-    setSummary("");
-    setPhase("idle");
-    displayToast("已写入 Flomo");
+    clearFinishedSession("已写入 Flomo，计时已结束");
   }
 
   function handleSummaryShortcut(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -582,7 +646,8 @@ export default function HomePage() {
         </div>
       )}
 
-      {(phase === "end" || phase === "saving") && session && (
+      {(phase === "end" || phase === "ending" || phase === "saving") &&
+        session && (
         <div className="dialog-backdrop" role="presentation">
           <section
             className="dialog-card dialog-card-wide"
@@ -590,7 +655,7 @@ export default function HomePage() {
             aria-modal="true"
             aria-labelledby="end-dialog-title"
           >
-            {phase !== "saving" && (
+            {phase === "end" && (
               <button
                 className="dialog-close"
                 type="button"
@@ -629,7 +694,7 @@ export default function HomePage() {
               </section>
             )}
 
-            <form onSubmit={confirmEnd} noValidate>
+            <form onSubmit={finishWithFlomo} noValidate>
               <label htmlFor="summary">记录内容</label>
               <textarea
                 id="summary"
@@ -643,7 +708,7 @@ export default function HomePage() {
                 maxLength={2000}
                 rows={5}
                 autoFocus
-                disabled={phase === "saving"}
+                disabled={phase !== "end"}
                 aria-invalid={Boolean(summaryError)}
                 aria-describedby={summaryError ? "summary-error" : "summary-hint"}
               />
@@ -656,19 +721,27 @@ export default function HomePage() {
                   {summaryError}
                 </p>
               )}
-              <div className="dialog-actions">
+              <div className="dialog-actions dialog-actions-three">
                 <button
                   className="button button-ghost"
                   type="button"
                   onClick={saveProgressEntry}
-                  disabled={phase === "saving" || isMutating}
+                  disabled={phase !== "end" || isMutating}
                 >
-                  继续计时
+                  继续
+                </button>
+                <button
+                  className="button button-secondary"
+                  type="button"
+                  onClick={endWithoutFlomo}
+                  disabled={phase !== "end" || isMutating}
+                >
+                  {phase === "ending" ? "正在结束" : "结束"}
                 </button>
                 <button
                   className="button button-primary"
                   type="submit"
-                  disabled={phase === "saving" || isMutating}
+                  disabled={phase !== "end" || isMutating}
                 >
                   {phase === "saving" ? (
                     <>
@@ -676,7 +749,7 @@ export default function HomePage() {
                       正在写入
                     </>
                   ) : (
-                    "结束"
+                    "Flomo并结束"
                   )}
                 </button>
               </div>

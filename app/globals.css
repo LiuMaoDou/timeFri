@@ -665,6 +665,14 @@ textarea:focus-visible {
   gap: 12px;
 }
 
+.dialog-actions-three {
+  grid-template-columns: 0.9fr 0.9fr 1.35fr;
+}
+
+.dialog-actions-three .button {
+  padding-inline: 12px;
+}
+
 .session-summary {
   display: flex;
   margin-top: 28px;
@@ -925,6 +933,10 @@ textarea:focus-visible {
 
   .dialog-actions .button-primary {
     grid-row: 1;
+  }
+
+  .dialog-actions-three .button-primary {
+    grid-row: auto;
   }
 
   .session-summary {
